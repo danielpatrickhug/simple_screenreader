@@ -1,6 +1,6 @@
 # Simple ScreenReader
 ```
-Simple screenreader that uses OpenAI TT2S API to convert the text in your copy buffer into audio files
+A simple screenreader that uses OpenAI TT2S API to convert the text in your copy buffer into audio files
 ```
 
 ## How to run
