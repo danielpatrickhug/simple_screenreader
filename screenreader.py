@@ -6,32 +6,47 @@ import os
 from pygame import mixer
 import re
 import logging
+from pydantic import BaseModel, Field, ValidationError
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class Config:
-    API_KEY = os.environ.get("OPENAI_API_KEY")
-    if not API_KEY:
-        raise ValueError("API key not found. Set the OPENAI_API_KEY environment variable.")
-    AUDIO_MODEL = "tts-1"
-    AUDIO_VOICE = "echo"
-    MAX_TEXT_SIZE = 4096
+class Config(BaseModel):
+    api_key: str = Field(..., alias="OPENAI_API_KEY")
+    audio_model: str = "tts-1"
+    audio_voice: str = "echo"
+    max_text_size: int = 4096
+
+    @classmethod
+    def from_env(cls):
+        env_vars = {
+            "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY"),
+            "audio_model": os.environ.get("AUDIO_MODEL", "tts-1"),
+            "audio_voice": os.environ.get("AUDIO_VOICE", "echo"),
+            "max_text_size": int(os.environ.get("MAX_TEXT_SIZE", "4096"))
+        }
+        return cls(**env_vars)
+
+# Load configuration
+try:
+    config = Config.from_env()
+except ValidationError as e:
+    raise ValueError(f"Configuration error: {e}")
 
 class TTSClient:
     def __init__(self, api_key):
         self.client = OpenAI(api_key=api_key)
 
     async def text_to_speech(self, text, audio_queue):
-        text_batches = self.split_text_into_batches(text, Config.MAX_TEXT_SIZE)
+        text_batches = self.split_text_into_batches(text, config.max_text_size)
         tasks = [self.process_batch(batch, audio_queue) for batch in text_batches]
         await asyncio.gather(*tasks)
 
     async def process_batch(self, batch, audio_queue):
         try:
             response = self.client.audio.speech.create(
-                model=Config.AUDIO_MODEL,
-                voice=Config.AUDIO_VOICE,
+                model=config.audio_model,
+                voice=config.audio_voice,
                 input=batch
             )
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_audio_file:
@@ -89,7 +104,7 @@ async def main():
     logging.info("Starting screen reader...")
     audio_queue = asyncio.Queue()
 
-    tts_client = TTSClient(api_key=Config.API_KEY)
+    tts_client = TTSClient(api_key=config.api_key)
     audio_player = AudioPlayer()
 
     playback_task = asyncio.create_task(audio_player.play_audio(audio_queue))
