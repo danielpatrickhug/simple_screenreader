@@ -13,7 +13,7 @@ export OPENAI_API_KEY
 2. create venv(optional), install requirements and run the python script
 ```bash
 python3.12 -m venv venv && source venv/bin/activate && pip install -U pip setuptools wheel
-pip install requirements.txt
+pip install -r requirements.txt
 python screenreader.py
 ```
 
